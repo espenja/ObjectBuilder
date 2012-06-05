@@ -2,6 +2,7 @@ package rules;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.HashSet;
 
 import interfaces.CustomObjectFormatter;
 import interfaces.ICanOutputFormattedData;
@@ -10,20 +11,26 @@ public class ObjectRule implements ICanOutputFormattedData {
 	
 	private HashMap<String, MethodRule> methodRules;
 	private HashMap<String, AnnotationRule> annotationRules;
-	private CustomObjectFormatter customObjectFormatter;
+	private CustomObjectFormatter customObjectFormatter = null;
 	private boolean ignoreObject;
 	private boolean ignoreMethods;
 	private boolean ignoreAnnotations;
 	protected boolean valid;
 	
-	@SuppressWarnings("rawtypes")
-	private Class cls;
+	private Class<?> primaryClass;
+	private HashSet<Class<?>> classes;
 	private String classPath;
 	
-	public ObjectRule(@SuppressWarnings("rawtypes") Class cls) {
+	public ObjectRule(Class<?> primaryClass, Class<?>... formatSupportClasses) {
+		this.primaryClass = primaryClass;
+		this.classes = new HashSet<>();
+		
 		methodRules = new HashMap<>();
 		annotationRules = new HashMap<>();
-		this.cls = cls;
+		
+		for(Class<?> cls : formatSupportClasses) {
+			this.classes.add(cls);
+		}
 	}
 	
 	public HashMap<String, MethodRule> getMethodRules() {
@@ -74,9 +81,12 @@ public class ObjectRule implements ICanOutputFormattedData {
 		return ignoreObject;
 	}
 	
-	@SuppressWarnings("rawtypes")
-	public Class getCls() {
-		return cls;
+	public Class<?> getPrimaryClass() {
+		return primaryClass;
+	}
+	
+	public HashSet<Class<?>> getClasses() {
+		return classes;
 	}
 
 	public String getClassPath() {
@@ -127,15 +137,19 @@ public class ObjectRule implements ICanOutputFormattedData {
 	}
 	
 	public String format(Object object) {
-		if(object.getClass() == cls) {
+		if(classes.contains(object.getClass())) {
 			if(customObjectFormatter != null)
 				return customObjectFormatter.format(object);
 			return object.toString();
 		}
-		throw new RuntimeException("Cannot format object of class not represented by the object rule");
+		throw new RuntimeException("Cannot format object of class not represented by the object rule: " + object.getClass());
 	}
 
 	public void addCustomObjectFormatter(CustomObjectFormatter customObjectFormatter) {
 		this.customObjectFormatter = customObjectFormatter;
+	}
+	
+	public CustomObjectFormatter getCustomObjectFormatter() {
+		return customObjectFormatter;
 	}
 }

@@ -16,13 +16,12 @@ public class MethodRule implements ICanOutputFormattedData {
 	@SuppressWarnings({ "rawtypes", "unused" })
 	private Class[] parameterValues;
 	
-	@SuppressWarnings("unchecked")
 	public MethodRule(ObjectRule objectRule, Method method) {
 		this.objectRule = objectRule;
 		this.method = method;
 		methodName = method.getName();
 		try {
-			objectRule.getCls().getMethod(methodName, new Class[] { });
+			objectRule.getPrimaryClass().getMethod(methodName, new Class[] { });
 			parameterValues = new Class[] { };
 			method.setAccessible(true);
 		} catch (NoSuchMethodException | SecurityException e) {
@@ -30,12 +29,11 @@ public class MethodRule implements ICanOutputFormattedData {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public MethodRule(ObjectRule objectRule, String methodName) {
 		this.objectRule = objectRule;
 		this.methodName = methodName;
 		try {
-			method = objectRule.getCls().getMethod(methodName, new Class[] { });
+			method = objectRule.getPrimaryClass().getMethod(methodName, new Class[] { });
 			parameterValues = new Class[] { };
 			method.setAccessible(true);
 		} catch (NoSuchMethodException | SecurityException e) {
@@ -43,12 +41,11 @@ public class MethodRule implements ICanOutputFormattedData {
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public MethodRule(ObjectRule objectRule, String methodName, @SuppressWarnings("rawtypes") Class... parameterValues) {
 		this.objectRule = objectRule;
 		this.methodName = methodName;
 		try {
-			method = objectRule.getCls().getMethod(methodName, parameterValues);
+			method = objectRule.getPrimaryClass().getMethod(methodName, parameterValues);
 			this.parameterValues = parameterValues;
 			method.setAccessible(true);
 		} catch (NoSuchMethodException | SecurityException e) {

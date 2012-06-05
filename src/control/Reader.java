@@ -1,7 +1,6 @@
 package control;
 
-import formatters.JSON;
-import formatters.YAML;
+import formatters.json.JSON;
 import interfaces.Formatter;
 
 import java.lang.annotation.Annotation;
@@ -19,7 +18,6 @@ import java.util.Stack;
 import model.CustomObject4;
 import model.ObjectWrapper;
 import model.Position;
-import model.Test;
 
 public class Reader {
 	
@@ -33,19 +31,27 @@ public class Reader {
 	
 	public static void main(String[] args) {
 		JSON json = new JSON();
-		YAML yaml = new YAML();
+//		YAML yaml = new YAML();
 		
 		CustomObject4 customObject = new CustomObject4();
 		customObject.setCustomObject();
 		
 		System.out.println(json.read(customObject));
-		System.out.println(yaml.read(customObject));
+		//System.out.println(yaml.read(customObject));
 	}
 	
 	public Reader(Formatter formatter) {
+		
+		if(formatter == null)
+			throw new RuntimeException("Formatter can not be null");
+		
 		this.formatter = formatter;
 		classStack = new Stack<Object>();
 		finishedObjects = new HashSet<Object>();
+	}
+	
+	public Formatter getFormatter() {
+		return formatter;
 	}
 	
 	public String read(Object object) {
@@ -65,7 +71,7 @@ public class Reader {
 			position = new Position(1, 0);
 		
 		if(object == null) {
-			formatter.addObject(new ObjectWrapper(null), position);
+			formatter.addObject(new ObjectWrapper(null, this), position);
 			return;
 		}
 		
@@ -82,10 +88,11 @@ public class Reader {
 												) {
 			
 //			formatter.stateChange(object);
-			formatter.addObject(new ObjectWrapper(object), position);
+			
+			formatter.addObject(new ObjectWrapper(object, this), position);
 		}
 		
-		else if(object.getClass().isAssignableFrom(Collection.class)) {
+		else if(object instanceof Collection) {
 			
 			Collection<?> collection = (Collection<?>) object;
 			Iterator<?> collectionIterator = collection.iterator();
@@ -178,7 +185,7 @@ public class Reader {
 				continue;
 			
 			formatter.startMapKey(mapPosition);
-			formatter.addObject(new ObjectWrapper(methodKey), mapPosition);
+			formatter.addObject(new ObjectWrapper(methodKey, this), mapPosition);
 			
 			Object returnObject = null;
 			formatter.startMapValue(mapPosition);
@@ -194,7 +201,7 @@ public class Reader {
 			}
 			
 			if(returnObject == null) {
-				formatter.addObject(new ObjectWrapper(null), mapPosition);
+				formatter.addObject(new ObjectWrapper(null, this), mapPosition);
 				continue;
 			}
 			
@@ -210,7 +217,7 @@ public class Reader {
 					returnObject instanceof String
 													) {
 //				formatter.stateChange(returnObject);
-				formatter.addObject(new ObjectWrapper(returnObject), mapPosition);
+				formatter.addObject(new ObjectWrapper(returnObject, this), mapPosition);
 			}
 			
 			else if(returnObject instanceof Collection) {
@@ -315,8 +322,8 @@ public class Reader {
 		}
 		
 		if(finishedObjects.contains(object)) {
-			System.out.println("Failed on object " + object);
-			return true;
+//			System.out.println("Failed on object " + object);
+//			return true;
 		}
 		return false;
 	}

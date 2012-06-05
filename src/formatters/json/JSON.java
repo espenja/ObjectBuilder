@@ -1,14 +1,15 @@
-package formatters;
+package formatters.json;
 
 import interfaces.Formatter;
 
 import java.lang.annotation.Annotation;
 import java.util.HashMap;
 
-import rules.ObjectRule;
-
 import model.ObjectWrapper;
 import model.Position;
+import rules.ObjectRule;
+import rules.formatting.NumberWithXDecimalPlaces;
+import rules.formatting.StringCasingFormatter;
 import control.Reader;
 
 public class JSON implements Formatter {
@@ -23,15 +24,21 @@ public class JSON implements Formatter {
 		builder = new StringBuilder();
 		objectRules = new HashMap<>();
 		reader = new Reader(this);
-		createObjectRules();
+		loadSettings();
 	}
 	
-	private void createObjectRules() {
-		ObjectRule objectRule = new ObjectRule(String.class);	
+	private void loadSettings() {
+		Settings.numberDecimalRule.addCustomObjectFormatter(new NumberWithXDecimalPlaces(Settings.decimalFormatLength));
+		ObjectRule stringRule = new ObjectRule(String.class, String.class);
+		stringRule.addCustomObjectFormatter(new StringCasingFormatter());
+		objectRules.put(String.class, stringRule);
+		mapMultipleObjectRules(Settings.numberDecimalRule, Settings.getNumberDecimalRuleClasses());
 	}
 	
-	public void setObjectRules(HashMap<Class<?>, ObjectRule> objectRule) {
-		this.objectRules = objectRules;
+	private void mapMultipleObjectRules(ObjectRule objectRule, Class<?>... classes) {
+		for(Class<?> cls : classes) {
+			objectRules.put(cls, objectRule);
+		}
 	}
 	
 	public HashMap<Class<?>, ObjectRule> getObjectRules() {
@@ -53,13 +60,13 @@ public class JSON implements Formatter {
 	public void addObject(ObjectWrapper formattedObject, Position position) {
 		
 		if(isMapKey) {
-			builder.append("\"" /*+ position.getPos() + "/" + position.getMax() + ": "*/ + formattedObject + "\": ");
+			builder.append("\"" + formattedObject + "\": ");
 		}
 		if(isMapValue) {
 			if(position.isLast())
-				builder.append("\"" /*+ position.getPos() + "/" + position.getMax() + ": "*/ + formattedObject + "\"");
+				builder.append("\"" + formattedObject.format() + "\"");
 			else
-				builder.append("\"" /*+ position.getPos() + "/" + position.getMax() + ": "*/ + formattedObject + "\", ");
+				builder.append("\"" + formattedObject.format() + "\", ");
 		}
 		
 	}
