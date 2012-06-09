@@ -28,11 +28,11 @@ public class JSON implements Formatter {
 	}
 	
 	private void loadSettings() {
-		Settings.numberDecimalRule.addCustomObjectFormatter(new NumberWithXDecimalPlaces(Settings.decimalFormatLength));
-		ObjectRule stringRule = new ObjectRule(String.class, String.class);
-		stringRule.addCustomObjectFormatter(new StringCasingFormatter());
-		objectRules.put(String.class, stringRule);
-		mapMultipleObjectRules(Settings.numberDecimalRule, Settings.getNumberDecimalRuleClasses());
+//		Settings.numberDecimalRule.addCustomObjectFormatter(new NumberWithXDecimalPlaces(Settings.decimalFormatLength));
+//		ObjectRule stringRule = new ObjectRule(String.class, String.class);
+//		stringRule.addCustomObjectFormatter(new StringCasingFormatter());
+//		objectRules.put(String.class, stringRule);
+//		mapMultipleObjectRules(Settings.numberDecimalRule, Settings.getNumberDecimalRuleClasses());
 	}
 	
 	private void mapMultipleObjectRules(ObjectRule objectRule, Class<?>... classes) {
@@ -93,10 +93,7 @@ public class JSON implements Formatter {
 	}
 
 	public void endMap(String name, Annotation[] annotations, Position position) {
-		if(position.isLast())
-			builder.append(" } ");
-		else
-			builder.append(" }, ");
+		builder.append(" } ");
 	}
 
 	public void startMapKey(Position position) {
@@ -111,7 +108,7 @@ public class JSON implements Formatter {
 	
 	@Override
 	public String toString() {
-		return builder.toString().replaceAll("\\s+", "");
+		return builder.toString();//.replaceAll("\\s+", "");
 	}
 
 	public void stateChange(Object cls) {

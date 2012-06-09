@@ -1,12 +1,14 @@
 package control;
 
 import formatters.json.JSON;
+import formatters.yaml.YAML;
 import interfaces.Formatter;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -31,13 +33,13 @@ public class Reader {
 	
 	public static void main(String[] args) {
 		JSON json = new JSON();
-//		YAML yaml = new YAML();
+		YAML yaml = new YAML();
 		
 		CustomObject4 customObject = new CustomObject4();
-		customObject.setCustomObject();
 		
 		System.out.println(json.read(customObject));
-		//System.out.println(yaml.read(customObject));
+//		System.out.println(json.read(new Date(System.currentTimeMillis())));
+		System.out.println(yaml.read(customObject));
 	}
 	
 	public Reader(Formatter formatter) {
@@ -96,7 +98,7 @@ public class Reader {
 			
 			Collection<?> collection = (Collection<?>) object;
 			Iterator<?> collectionIterator = collection.iterator();
-			Position collectionPosition = new Position(collection.size(), -1);
+			Position collectionPosition = new Position(collection.size(), 0);
 			
 			classStack.push(object);
 			formatter.stateChange(object);
@@ -118,7 +120,7 @@ public class Reader {
 			
 			Map<?, ?> map = (Map<?, ?>) object;
 			Iterator<?> mapIterator = map.keySet().iterator();
-			Position mapPosition = new Position(map.keySet().size(), -1);
+			Position mapPosition = new Position(map.keySet().size(), 0);
 			
 			classStack.push(object);
 			formatter.stateChange(object);
@@ -138,7 +140,7 @@ public class Reader {
 				formatter.startMapValue(mapPosition);
 				readObject(iterValue, mapPosition);
 			}
-			
+
 			formatter.endMap(null, null, position);
 			formatter.stateChange(classStack.pop());
 		}
@@ -160,14 +162,14 @@ public class Reader {
 		String className = cls.getSimpleName();
 		
 		Annotation[] annotations = cls.getDeclaredAnnotations();
-		List<Method> methods = getValidMethods(cls);
+		List<Method> methods = getValidMethods(cls, object);
 		
 		if(cameFromCustomObject)
 			formatter.startMap(null, annotations, position);
 		else
 			formatter.startMap(className, annotations, position);
 				
-		Position mapPosition = new Position(methods.size(), -1);
+		Position mapPosition = new Position(methods.size(), 0);
 		
 		for(Method method : methods) {
 			
@@ -176,19 +178,12 @@ public class Reader {
 			if(!method.isAccessible())
 				method.setAccessible(true);
 			
-			if(!methodIsValid(method))
-				continue;
-			
 			String methodKey = getMethodKey(method);
 			
 			if(methodKey == null)
 				continue;
 			
-			formatter.startMapKey(mapPosition);
-			formatter.addObject(new ObjectWrapper(methodKey, this), mapPosition);
-			
 			Object returnObject = null;
-			formatter.startMapValue(mapPosition);
 			
 			try {
 				returnObject = method.invoke(object, new Object[] { });
@@ -200,10 +195,17 @@ public class Reader {
 				e.printStackTrace();
 			}
 			
+			formatter.startMapKey(mapPosition);
 			if(returnObject == null) {
-				formatter.addObject(new ObjectWrapper(null, this), mapPosition);
 				continue;
 			}
+			else {
+				formatter.addObject(new ObjectWrapper(methodKey, this, returnObject.getClass()), mapPosition);
+			}
+
+			formatter.startMapValue(mapPosition);
+			
+			
 			
 			if(
 					returnObject instanceof Boolean 	||
@@ -224,7 +226,7 @@ public class Reader {
 				
 				Collection<?> collection = (Collection<?>) returnObject;
 				Iterator<?> collectionIterator = collection.iterator();
-				Position collectionPosition = new Position(collection.size(), -1);
+				Position collectionPosition = new Position(collection.size(), 0);
 				
 				classStack.push(returnObject);
 				formatter.stateChange(returnObject);
@@ -237,7 +239,7 @@ public class Reader {
 					collectionPosition.increasePosition();
 					readObject(iterObject, collectionPosition);
 				}
-				
+			
 				formatter.endList(mapPosition);
 				formatter.stateChange(classStack.pop());
 			}
@@ -246,7 +248,7 @@ public class Reader {
 				
 				Map<?, ?> map = (Map<?, ?>) returnObject;
 				Iterator<?> mapIterator = map.keySet().iterator();
-				Position innerMapPosition = new Position(map.keySet().size(), -1);
+				Position innerMapPosition = new Position(map.keySet().size(), 0);
 				
 				classStack.push(returnObject);
 				formatter.stateChange(returnObject);
@@ -279,23 +281,36 @@ public class Reader {
 		formatter.endMap(className, annotations, position);
 	}
 	
-	private List<Method> getValidMethods(Class<?> cls) {
+	private List<Method> getValidMethods(Class<?> cls, Object object) {
+		
+		if(object.getClass() != cls)
+			throw new IllegalArgumentException("cls must be of the same class type as object");
+		
 		List<Method> methods = new ArrayList<>();
 		
 		for(Method method : cls.getDeclaredMethods()) {
-			if(methodIsValid(method))
+			if(methodIsValid(method, object))
 				methods.add(method);
 		}
 		return methods;
 	}
 	
-	private boolean methodIsValid(Method method) {
+	private boolean methodIsValid(Method method, Object object) {
+		
+		if(!Arrays.asList(object.getClass().getDeclaredMethods()).contains(method))
+			throw new IllegalArgumentException("Supplied method must exist in the supplied object");
 		
 		for(String str : validMethodNames) {
 			if(method.getName().startsWith(str)) {
-				if(method.getParameterTypes().length == 0)
-					return true;
-				return false;
+				if(method.getParameterTypes().length == 0) {
+					try {
+						method.setAccessible(true);
+						if(method.invoke(object, new Object[] { }) != null)
+							return true;
+					} catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException e) {
+						e.printStackTrace();
+					}
+				}
 			}
 		}
 		return false;

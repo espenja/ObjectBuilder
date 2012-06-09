@@ -1,6 +1,7 @@
 package model;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,8 +19,11 @@ public class CustomObject4 {
 	private List<Object> listField = new ArrayList<Object>();
 	private Map<String, Object> mapField = new HashMap<String, Object>();
 	private CustomObject4 customObject;
+	private Date date;
 	
 	public CustomObject4() {
+//		date = new Date();
+		
 		listField.add("index1");
 		listField.add("index2");
 		
@@ -35,6 +39,14 @@ public class CustomObject4 {
 		mapField.put("HALLOOOOOOO", "jacobsson");
 		mapField.put("espen", 123);
 		mapField.put("marit", list3);
+	}
+	
+	public void setDate(Date date) {
+		this.date = date;
+	}
+	
+	public Date getDate() {
+		return date;
 	}
 	
 	public void setCustomObject() {

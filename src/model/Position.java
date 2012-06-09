@@ -23,10 +23,15 @@ public class Position {
 	}
 	
 	public boolean isLast() {
-		return max == pos + 1;
+		return max == pos;
 	}
 	
 	public void increasePosition() {
 		pos++;
+	}
+	
+	@Override
+	public String toString() {
+		return "(" + pos + "," + max + ")";
 	}
 }

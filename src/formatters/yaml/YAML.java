@@ -1,10 +1,12 @@
-package formatters;
+package formatters.yaml;
 
 import interfaces.Formatter;
 
 import java.lang.annotation.Annotation;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Stack;
 
 import rules.ObjectRule;
@@ -21,15 +23,23 @@ public class YAML implements Formatter {
 	private Reader reader;
 	private boolean isMapKey;
 	private boolean isMapValue;
+	private int indentLevel;
 	
 	public YAML() {
 		builder = new StringBuilder();
 		classStack = new Stack<Object>();
+		objectRules = new HashMap<>();
 		reader = new Reader(this);
 	}
 	
 	public void setObjectRules(HashMap<Class<?>, ObjectRule> objectRule) {
 		this.objectRules = objectRules;
+	}
+	
+	private void indent() {
+		for(int i = 0; i < indentLevel; i++)
+			for(int o = 0; o < 4; o++)
+				builder.append(" ");
 	}
 	
 	public HashMap<Class<?>, ObjectRule> getObjectRules() {
@@ -47,9 +57,9 @@ public class YAML implements Formatter {
 	}
 	
 	private Object getPreviousState() {
-		if(classStack.isEmpty())
+		if(classStack.isEmpty() || classStack.size() < 2)
 			return null;
-		return classStack.get(1);
+		return classStack.get(classStack.size() - 2);
 	}
 
 	public void startFormatting() {
@@ -62,47 +72,73 @@ public class YAML implements Formatter {
 
 	public void addObject(ObjectWrapper formattedObject, Position position) {
 		
+		String field = formattedObject.format();
+		
 		if(isMapKey) {
-			builder.append(formattedObject + ":");
+			indent();
+			builder.append(field + ":");
 		}
 		if(isMapValue) {
-			if(position.isLast())
-				builder.append("\"" /*+ position.getPos() + "/" + position.getMax() + ": "*/ + formattedObject + "\"");
+			if(Collection.class.isAssignableFrom(getState().getClass())) {
+				indent();
+				if(position.isLast()) {
+					builder.append(field + "\n");
+				}
+				else
+					builder.append(field + ",\n");
+			}
 			else
-				builder.append("\"" /*+ position.getPos() + "/" + position.getMax() + ": "*/ + formattedObject + "\", ");
+				builder.append(" " + field + "\n");
 		}
-		
-//		if(getState() instanceof Collection) {
-//			builder.append("- " + formattedObject + "\n");
-//		}
 	}
 
 	public void startList(Position position) {
-		builder.append("[ ");
+
+		Object object = getPreviousState();
+		if(Collection.class.isAssignableFrom(object.getClass())) {
+			indent();
+			builder.append("[\n");
+		}
+		else {
+			builder.append(" [ \n");
+		}
+		
+		indentLevel++;
 		isMapKey = false;
 		isMapValue = true;
 	}
 
 	public void endList(Position position) {
-		if(position.isLast())
-			builder.append(" ] ");
-		else
-			builder.append(" ], ");
+		indentLevel--;
+		indent();
+		
+		Object currentObject = getState();
+		Object previousObject = getPreviousState();
+		
+		if(previousObject != null) {
+			if(Collection.class.isAssignableFrom(currentObject.getClass()) && Collection.class.isAssignableFrom(previousObject.getClass())) {
+				if(position.isLast())
+					builder.append("]\n");
+					
+				else
+					builder.append("], \n");
+			}
+			else if(Collection.class.isAssignableFrom(currentObject.getClass()) && !Collection.class.isAssignableFrom(previousObject.getClass())) {
+				builder.append("]\n");
+			}
+		}
 	}
 
 	public void startMap(String name, Annotation[] annotations, Position position) {
-		
+		indentLevel++;
 		if(name == null)
-			builder.append(" { ");
+			builder.append("\n");
 		else
-			builder.append("- " + name + " {");
+			builder.append(name + " :\n");
 	}
 
 	public void endMap(String name, Annotation[] annotations, Position position) {
-		if(position.isLast())
-			builder.append(" } ");
-		else
-			builder.append(" }, ");
+		indentLevel--;
 	}
 
 	public void startMapKey(Position position) {
@@ -111,13 +147,19 @@ public class YAML implements Formatter {
 	}
 
 	public void startMapValue(Position position) {
-		builder.append("\n");
 		isMapValue = true;
 		isMapKey = false;
 	}
 
 	public void stateChange(Object cls) {
-		classStack.add(cls);
+		if(cls == getState()) {
+			System.out.println("popped class from stack: " + cls.getClass().getName());
+			classStack.pop();
+		}
+		else {
+			System.out.println("new class on stack: " + cls.getClass().getName());	
+			classStack.add(cls);
+		}
 	}
 	
 	@Override
